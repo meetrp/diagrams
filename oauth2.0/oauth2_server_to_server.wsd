@@ -1,0 +1,90 @@
+@startuml oauth2_server_to_server
+
+header
+    Created: <font color=red>Jun-19-2021 02:20</font>
+    View Generated: %date("MMM-dd-yyyy HH:mm")
+endheader
+title
+    = oauth 2.0 flow (server to server)
+    <size:11><i> User wants to expose all his contacts to "MyApp Server." </i></size>
+    <size:11><i> "MyApp Server" presents a page with all possible resource servers </i></size>
+    <size:11><i> (like GMail/FB). User chooses one of them. </i></size>
+end title
+autoactivate on
+
+actor "User" as user <<Resource Owner>>
+participant "Web Browser" as browser
+participant "MyApp Server" as clientServer <<Client / Redirect URI>> #IMPLEMENTATION
+participant "GMail/FB Server" as authServer <<Authorization Server>> #TECHNOLOGY
+participant "Google Contacts API/FB Friends API" as resourceServer <<Resource Server>> #TECHNOLOGY
+
+== Client Registration ==
+group #LightCyan MyApp Server Launch
+    clientServer -> authServer : <font color=blue>**http://AuthServer.com/RegisterClient**</font>\n{\n    app_name: **MyApp**,\n    app_redirect_uri: <font color=red>**http://MyApp.com/CallBack**</font>\n}
+    authServer --> clientServer : {\n    app_id: **DEADFACE0123**,\n    app_secret: **10102192040230**\n}
+end group
+
+... ...
+
+== OAUTH 2.0 AUTHORIZATION_CODE TOKEN ==
+autonumber
+user -> browser : Click on Connect
+    browser -> clientServer : <font color=red>**http://MyApp.com/Login**</font>
+    clientServer --> browser : **HTTP** 302 Redirect to <font color=blue>**AuthServer**</font> \n{\n    app_id: **DEADFACE0123**,\n    scope: **CONTACTS**,\n    response_type: **CODE**,\n    callback_url: <font color=red>**http://MyApp.com/CallBack**</font>\n}
+
+    browser -> authServer : <font color=blue>**http://AuthServer.com/Authorize**</font>\nMethod: <font color=green>**GET**</font>\n{\n    app_id: **DEADFACE0123**,\n    scope: **CONTACTS**,\n    response_type: **CODE**,\n    callback_url: <font color=red>**http://MyApp.com/CallBack**</font>\n}
+    note left
+        **response type** : type of information client expects to receive
+        **scope** : permissions the client is requesting for
+    end note
+
+        authServer -> authServer : ValidateAppID(**DEADFACE0123**)
+        deactivate authServer
+        authServer -> authServer : Render Login Form
+        deactivate authServer
+    authServer --> browser : Login Form
+    browser -> user : Login Form
+        user -> user : Input Credentials
+        deactivate user
+    user --> browser : Submit Form
+
+    browser -> authServer : <font color=blue>**http://AuthServer.com/Authorize**</font> \n{\n    credentials \n}
+        authServer -> authServer : Render Consent Form for scope
+        deactivate authServer
+    authServer --> browser : Consent Form\n{\n    scope: **CONTACTS** \n}
+    browser -> user : Consent Form\n{\n    scope: **CONTACTS** \n}
+    note left
+        **AuthServers** validates with **User** if the **Scope**
+        is acceptable and if the **AuthServer** can give
+        permission to the **ClientServer** to access the
+        resources in **ResourceServer**
+    end note
+    user --> browser : Accept
+    browser -> authServer : Accept
+        authServer -> authServer : Validate **callback_url**, from this call,\nmatches **app_redirect_uri**, from the\nregistration.
+        deactivate authServer
+        authServer -> authServer : generate code as per response_type
+        deactivate authServer
+    authServer --> browser : **HTTP** 302 Redirect to <font color=red>**http://MyApp.com/CallBack**</font>\nMethod: <font color=green>**GET**</font>\n{\n    CODE : **9807023480AC**\n}
+
+    browser -> clientServer : <font color=red>**http://MyApp.com/CallBack**</font>\nMethod: <font color=green>**GET**</font>\n{\n    code : **9807023480AC**\n}
+        clientServer -> authServer : <font color=blue>**http://AuthServer.com/Tokens**</font>\nMethod: <font color=green>**POST**</font>\n{\n    code: **9807023480AC**,\n    app_id: **DEADFACE0123**,\n    app_secret: **10102192040230**,\n    grant_type: **AUTHORIZATION_CODE**\n}
+            authServer -> authServer : validate auth_code, app_id
+            deactivate authServer
+            authServer -> authServer : generate tokens
+            note right
+                Embed the scope of access,
+                i.e., access level, in the
+                access_tokens
+            end note
+            deactivate authServer
+        authServer --> clientServer : {\n    access_token: **DGF3DS90124FADS0U**,\n    refresh_token: **FGLAHG810324GAG**,\n    token_type: <font color=brown>**BEARER**</font> \n}
+
+        clientServer -> resourceServer : <font color=brown>**http://ResourceServer.com/Contacts**</font> \n{\n    access_token: **DGF3DS90124FADS0U** \n}
+            resourceServer -> authServer : <font color=blue>**http://AuthServer.com/Validate**</font> \n{\n    access_token: **DGF3DS90124FADS0U** \n}
+            authServer --> resourceServer : Success
+        resourceServer --> clientServer : [ {contacts}, ... ]
+    clientServer --> browser : Success
+browser --> user : Success
+
+@enduml
