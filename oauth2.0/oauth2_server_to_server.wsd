@@ -81,6 +81,18 @@ user -> browser : Click on Connect
             end note
             deactivate authServer
         authServer --> clientServer : {\n    access_token: **DGF3DS90124FADS0U**,\n    refresh_token: **FGLAHG810324GAG**,\n    token_type: <font color=brown>**BEARER**</font> \n}
+        note left
+            <b>Bearer tokens</b> are a much simpler way of making API
+            requests, since they don’t require cryptographic
+            signing of each request. The tradeoff is that all
+            API requests must be made over an HTTPS connection,
+            since the request contains a plaintext token that
+            could be used by anyone if it were intercepted.
+
+            The downside to <b>Bearer tokens</b> is that there is
+            nothing preventing other apps from using a Bearer
+            token if it can get access to it. 
+        end note
 
         |||
         clientServer -> resourceServer : <font color=brown>**http://ResourceServer.com/Contacts**</font> \n{\n    access_token: **DGF3DS90124FADS0U** \n}
