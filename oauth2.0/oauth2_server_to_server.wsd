@@ -1,7 +1,7 @@
 @startuml oauth2_server_to_server
 
 header
-    Created: <font color=red>Jun-19-2021 02:20</font>
+    Created: <font color=red>Jun-20-2021 20:20</font>
     View Generated: %date("MMM-dd-yyyy HH:mm")
 endheader
 title
@@ -12,16 +12,16 @@ title
 end title
 autoactivate on
 
-actor "User" as user <<Resource Owner>>
-participant "Web Browser" as browser
+actor "User" as user <<Resource Owner>> #APPLICATION
+participant "Web Browser" as browser <<User Agent>> #APPLICATION
 participant "MyApp Server" as clientServer <<Client / Redirect URI>> #IMPLEMENTATION
 participant "GMail/FB Server" as authServer <<Authorization Server>> #TECHNOLOGY
-participant "Google Contacts API/FB Friends API" as resourceServer <<Resource Server>> #TECHNOLOGY
+participant "Google Contacts API/FB Friends API" as resourceServer <<Resource Server>> #STRATEGY
 
 == Client Registration ==
 group #LightCyan MyApp Server Launch
     clientServer -> authServer : <font color=blue>**http://AuthServer.com/RegisterClient**</font>\n{\n    app_name: **MyApp**,\n    app_redirect_uri: <font color=red>**http://MyApp.com/CallBack**</font>\n}
-    authServer --> clientServer : {\n    app_id: **DEADFACE0123**,\n    app_secret: **10102192040230**\n}
+    authServer --> clientServer : {\n    client_id: **DEADFACE0123**,\n    app_secret: **10102192040230**\n}
 end group
 
 ... ...
@@ -30,9 +30,10 @@ end group
 autonumber
 user -> browser : Click on Connect
     browser -> clientServer : <font color=red>**http://MyApp.com/Login**</font>
-    clientServer --> browser : **HTTP** 302 Redirect to <font color=blue>**AuthServer**</font> \n{\n    app_id: **DEADFACE0123**,\n    scope: **CONTACTS**,\n    response_type: **CODE**,\n    callback_url: <font color=red>**http://MyApp.com/CallBack**</font>\n}
+    clientServer --> browser : **HTTP** 302 Redirect to <font color=blue>**AuthServer**</font> \n{\n    client_id: **DEADFACE0123**,\n    scope: **CONTACTS**,\n    response_type: **CODE**,\n    redirect_uri: <font color=red>**http://MyApp.com/CallBack**</font>\n}
 
-    browser -> authServer : <font color=blue>**http://AuthServer.com/Authorize**</font>\nMethod: <font color=green>**GET**</font>\n{\n    app_id: **DEADFACE0123**,\n    scope: **CONTACTS**,\n    response_type: **CODE**,\n    callback_url: <font color=red>**http://MyApp.com/CallBack**</font>\n}
+    |||
+    browser -> authServer : <font color=blue>**http://AuthServer.com/Authorize**</font>\nMethod: <font color=green>**GET**</font>\n{\n    client_id: **DEADFACE0123**,\n    scope: **CONTACTS**,\n    response_type: **CODE**,\n    redirect_uri: <font color=red>**http://MyApp.com/CallBack**</font>\n}
     note left
         **response type** : type of information client expects to receive
         **scope** : permissions the client is requesting for
@@ -61,15 +62,16 @@ user -> browser : Click on Connect
     end note
     user --> browser : Accept
     browser -> authServer : Accept
-        authServer -> authServer : Validate **callback_url**, from this call,\nmatches **app_redirect_uri**, from the\nregistration.
+        authServer -> authServer : Validate **redirect_uri**, from this call,\nmatches **app_redirect_uri**, from the\nregistration.
         deactivate authServer
         authServer -> authServer : generate code as per response_type
         deactivate authServer
     authServer --> browser : **HTTP** 302 Redirect to <font color=red>**http://MyApp.com/CallBack**</font>\nMethod: <font color=green>**GET**</font>\n{\n    CODE : **9807023480AC**\n}
 
+    |||
     browser -> clientServer : <font color=red>**http://MyApp.com/CallBack**</font>\nMethod: <font color=green>**GET**</font>\n{\n    code : **9807023480AC**\n}
-        clientServer -> authServer : <font color=blue>**http://AuthServer.com/Tokens**</font>\nMethod: <font color=green>**POST**</font>\n{\n    code: **9807023480AC**,\n    app_id: **DEADFACE0123**,\n    app_secret: **10102192040230**,\n    grant_type: **AUTHORIZATION_CODE**\n}
-            authServer -> authServer : validate auth_code, app_id
+        clientServer -> authServer : <font color=blue>**http://AuthServer.com/Tokens**</font>\nMethod: <font color=green>**POST**</font>\n{\n    code: **9807023480AC**,\n    client_id: **DEADFACE0123**,\n    app_secret: **10102192040230**,\n    grant_type: **AUTHORIZATION_CODE**\n}
+            authServer -> authServer : validate auth_code, client_id
             deactivate authServer
             authServer -> authServer : generate tokens
             note right
@@ -80,6 +82,7 @@ user -> browser : Click on Connect
             deactivate authServer
         authServer --> clientServer : {\n    access_token: **DGF3DS90124FADS0U**,\n    refresh_token: **FGLAHG810324GAG**,\n    token_type: <font color=brown>**BEARER**</font> \n}
 
+        |||
         clientServer -> resourceServer : <font color=brown>**http://ResourceServer.com/Contacts**</font> \n{\n    access_token: **DGF3DS90124FADS0U** \n}
             resourceServer -> authServer : <font color=blue>**http://AuthServer.com/Validate**</font> \n{\n    access_token: **DGF3DS90124FADS0U** \n}
             authServer --> resourceServer : Success
