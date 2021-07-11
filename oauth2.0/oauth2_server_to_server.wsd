@@ -30,6 +30,7 @@ end group
 autonumber
 user -> browser : Click on Connect
     browser -> clientServer : <font color=red>**http://MyApp.com/Login**</font>
+    |||
     clientServer --> browser : **HTTP** 302 Redirect to <font color=blue>**AuthServer**</font> \n{\n    client_id: **DEADFACE0123**,\n    scope: **CONTACTS**,\n    response_type: **CODE**,\n    redirect_uri: <font color=red>**http://MyApp.com/CallBack**</font>\n}
 
     |||

@@ -1,0 +1,81 @@
+@startuml oauth2_app_to_server_pkce
+
+header
+    Created: <font color=red>Jun-22-2021 00:20</font>
+    View Generated: %date("MMM-dd-yyyy HH:mm")
+endheader
+title
+    = [oauth 2.0] Authorization Code Grant with PKCE flow (app to server)
+    <size:11><i> User wants to authorize email client to read emails</i></size>
+    <size:11><i> from the email servers (i.e., resource servers) </i></size>
+end title
+autoactivate on 
+
+participant "User" as user <<Resource Owner>>
+box Client App & embedded UA #MOTIVATION
+    participant "App" as app <<Client>> #IMPLEMENTATION
+    participant "User Agent" as ua #IMPLEMENTATION
+end box
+participant "GMail Server" as resourceServer <<Resource Server>> #TECHNOLOGY
+participant "Google Account Server" as authServer <<Authorization Server>> #TECHNOLOGY
+
+autonumber
+user -> app : Click on Connect
+    app -> resourceServer : <font color=brown>**http://ResourceServer.com/Emails**</font>
+    resourceServer --> app : HTTP 302\nRedirect to <font color=blue>**AuthServer**</font>
+
+    group #BUSINESS PKCE
+        app -> app : generate **code_verifier**\n(<font color=saddlebrown>**FED1234FAD**</font>)
+        deactivate app
+        app -> app : generate **code_challenge** string\n(<font color=orangered>**CBAD1241232191AB**</font>)
+        deactivate app
+    end group
+    app -> ua : <font color=blue>**http://AuthServer.com/Authorize**</font>\nMethod: <font color=green>**GET**</font>\n{\n    client_id: **DEADFACE0123**,\n    code_challenge_method: **plain**,\n    code_challenge: <font color=orangered>**CBAD1241232191AB**</font>,\n    response_type: **CODE**,\n    redirect_uri: <font color=red>**http://MyApp.com.app/CallBack**</font>\n}
+    note left
+    **code_challenge_method**: plain or S256,
+    **redirect_uri**: mobile os specific custom scheme
+    end note
+        ua -> authServer : <font color=blue>**http://AuthServer.com/Authorize**</font>\nMethod: <font color=green>**GET**</font>\n{\n    client_id: **DEADFACE0123**,\n    code_challenge_method: **plain**,\n    code_challenge: <font color=orangered>**CBAD1241232191AB**</font>,\n    response_type: **CODE**,\n    redirect_uri: <font color=red>**http://MyApp.com.app/CallBack**</font>\n}
+            authServer -> authServer : Render Login Form
+            deactivate authServer
+        authServer --> ua : Login Form
+    
+        ua -> user : Login Form
+            user -> user : Input Credentials
+            deactivate user
+        user --> ua : Submit Form
+    
+        ua -> authServer : <font color=blue>**http://AuthServer.com/Authorize**</font> \n{\n    credentials \n}
+            group #BUSINESS PKCE
+                authServer -> authServer : Store code_challenge*(<font color=orangered>**CBAD1241232191AB**</font>),\ncode_challenge_method(**plain**)
+                deactivate authServer
+            end group
+            authServer -> authServer : generate authorization code
+            deactivate authServer
+        authServer --> ua : **HTTP** 302 Redirect to <font color=red>**http://MyApp.com.app/CallBack**</font>\nMethod: <font color=green>**GET**</font>\n{\n    CODE : **9807023480AC**\n}
+    ua --> app : <font color=red>**http://MyApp.com.app/CallBack**</font>\nMethod: <font color=green>**GET**</font>\n{\n    CODE : **9807023480AC**\n}
+
+    |||
+    app -> authServer : <font color=blue>**http://AuthServer.com/Tokens**</font>\nMethod: <font color=green>**POST**</font>\n{\n    code: **9807023480AC**,\n    client_id: **DEADFACE0123**,\n    code_verifier: <font color=saddlebrown>**FED1234FAD**</font>,\n    grant_type: **AUTHORIZATION_CODE**,\n    redirect_uri: <font color=red>**http://MyApp.com.app/CallBack**</font>\n}
+        authServer -> authServer : validate auth_code, client_id
+        deactivate authServer
+        group #BUSINESS PKCE
+            authServer -> authServer : calculate new_code_challenge\nfrom **code_verifier** using stored\n**code_challenge_method**.
+            deactivate authServer
+            authServer -> authServer : Validate **new_code_challenge** matches\nthe store **code_challenge**, from the\nauthorization call.
+            deactivate authServer
+        end group
+        authServer -> authServer : generate tokens
+        deactivate authServer
+    authServer --> app : {\n    access_token: **DGF3DS90124FADS0U**,\n    refresh_token: **FGLAHG810324GAG**,\n    token_type: **BEARER** \n}
+    'ua --> app : {\n    access_token: **DGF3DS90124FADS0U**,\n    refresh_token: **FGLAHG810324GAG**,\n    token_type: **BEARER** \n}
+
+    app -> resourceServer : <font color=brown>**http://ResourceServer.com/Emails**</font> \n{\n    access_token: **DGF3DS90124FADS0U**\n}
+        resourceServer -> authServer : <font color=blue>**http://AuthServer.com/Validate**</font> \n{\n    access_token: **DGF3DS90124FADS0U** \n}
+        authServer --> resourceServer : Success
+        resourceServer -> resourceServer : prepare email_payload
+        deactivate resourceServer
+    resourceServer --> app : email_payload
+app --> user : emails
+
+@enduml
