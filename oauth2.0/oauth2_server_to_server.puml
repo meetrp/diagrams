@@ -5,7 +5,7 @@ header
     View Generated: %date("MMM-dd-yyyy HH:mm")
 endheader
 title
-    = oauth 2.0 flow (server to server)
+    = [oauth 2.0] Authorization Code Grant flow (server to server)
     <size:11><i> User wants to expose all his contacts to "MyApp Server." </i></size>
     <size:11><i> "MyApp Server" presents a page with all possible resource servers </i></size>
     <size:11><i> (like GMail/FB). User chooses one of them. </i></size>
@@ -21,7 +21,7 @@ participant "Google Contacts API/FB Friends API" as resourceServer <<Resource Se
 == Client Registration ==
 group #LightCyan MyApp Server Launch
     clientServer -> authServer : <font color=blue>**http://AuthServer.com/RegisterClient**</font>\n{\n    app_name: **MyApp**,\n    app_redirect_uri: <font color=red>**http://MyApp.com/CallBack**</font>\n}
-    authServer --> clientServer : {\n    client_id: **DEADFACE0123**,\n    app_secret: **10102192040230**\n}
+    authServer --> clientServer : {\n    client_id: **DEADFACE0123**,\n    client_secret: **10102192040230**\n}
 end group
 
 ... ...
@@ -71,8 +71,10 @@ user -> browser : Click on Connect
 
     |||
     browser -> clientServer : <font color=red>**http://MyApp.com/CallBack**</font>\nMethod: <font color=green>**GET**</font>\n{\n    code : **9807023480AC**\n}
-        clientServer -> authServer : <font color=blue>**http://AuthServer.com/Tokens**</font>\nMethod: <font color=green>**POST**</font>\n{\n    code: **9807023480AC**,\n    client_id: **DEADFACE0123**,\n    app_secret: **10102192040230**,\n    grant_type: **AUTHORIZATION_CODE**\n}
+        clientServer -> authServer : <font color=blue>**http://AuthServer.com/Tokens**</font>\nMethod: <font color=green>**POST**</font>\n{\n    code: **9807023480AC**,\n    client_id: **DEADFACE0123**,\n    client_secret: **10102192040230**,\n    grant_type: **AUTHORIZATION_CODE**,\n    redirect_uri: <font color=red>**http://MyApp.com/CallBack**</font>\n}
             authServer -> authServer : validate auth_code, client_id
+            deactivate authServer
+            authServer -> authServer : Validate **redirect_uri**, from this call,\nmatches **app_redirect_uri**, from the\nregistration.
             deactivate authServer
             authServer -> authServer : generate tokens
             note right
